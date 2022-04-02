@@ -516,6 +516,8 @@ class baseParent:
     def cost_function(self , objects_list ,roomPoints ,dR_room):
         """
         objects_list:same with redAreas [{}{}{}}]
+
+        dR_room: diagonal line
         """
 
 
@@ -1143,10 +1145,25 @@ class Group(baseParent):
     """Description:
         A group combined with some furnitures """
 
-    def __init__(self):
-        super(Group, self).__init__()
+    # def __init__(self, bottom_left, top_right, name,object_importance,doors=None
+    #              , windows=None ):
+    #     self.bottom_left = bottom_left
+    #     self.top_right = top_right
+    #     self.name = name
+    #     self.doors = doors
+    #     self.windows = windows
+    #     self.object_importance = object_importance
+    #     self.rotation = 0
+    #     self.redAreas = []
+
+    def __init__(self, bottom_left, top_right, name):
+        self.bottom_left = bottom_left
+        self.top_right = top_right
+        self.name = name
+        self.rotation = 0
         self.T_0 = 100
         self.T_F = 0.01
+        self.redAreas = []
 
     def Add(self, furniture):
         """Add furnitures into group
@@ -1174,14 +1191,16 @@ class Group(baseParent):
 
         temp_list_x = []
         temp_list_y = []
-        for item in self.redAreas:
-            temp_list_x.append[self.redAreas["point"].x]
-            temp_list_y.append[self.redAreas["point"].y]
+        for idx, item in enumerate(self.redAreas):
+            print(self.redAreas[idx]["point"].x)
+            temp_list_x.append(self.redAreas[idx]["point"].x)
+            temp_list_y.append(self.redAreas[idx]["point"].y)
 
         x1 = int(min(temp_list_x))
         y1 = int(min(temp_list_y))
-        x2 = x1 + int(max(self.redAreas["furniture"].top_right.x))
-        y2 = y1 + int(max(self.redAreas["furniture"].top_right.y))
+        x2 = x1 + int(max(temp_list_x))
+        y2 = y1 + int(max(temp_list_y))
+
         p1 = geometry.Point(x1,y1)
         p2 = geometry.Point(x2,y1)
         p3 = geometry.Point(x2,y2)
@@ -1189,6 +1208,12 @@ class Group(baseParent):
 
         return [p1, p2, p3, p4]
 
+    def dr_room(self):
+        temp = self.group_points()
+        height = temp[2].y - temp[0].y
+        width = temp[2].x - temp[0].x
+        dr = math.sqrt(pow(height, 2) + pow(width, 2))
+        return dr
 
     def calcCenter(self):
         """Description:
@@ -1228,7 +1253,13 @@ class Group(baseParent):
             self.pos_change(self.redAreas.index(idx), distance)
         return self.redAreas
 
+    def Rotate(self, rotation):
+        """
+        Description: rotate whole group in a rate(0,90,180,270)
+        """
 
+        for idx, item in enumerate(self.redAreas):
+            self.rotate(idx)
 
     def simulated_annealing(self):
         """
@@ -1242,14 +1273,15 @@ class Group(baseParent):
         num = 250
         count = 0
         alpha = 0.99
-        self.beta = -1/self.temprature
+        self.T = self.T_0
+        self.beta = -1/self.T
         groupPoints = self.group_points()
         # initial arrangement
         self.temp = self.redAreas
+        Dr_room = self.dr_room()
+        c_0 = self.cost_function(self.temp, groupPoints, Dr_room)
 
-        c_0 = self.cost_function(self.temp, groupPoints)
-
-        
+        self.T = self.T_0
         while self.T > self.T_F:
             for i in range(num):
                 # for idx in enumerate(self.redAreas):
@@ -1257,13 +1289,13 @@ class Group(baseParent):
                 
                 self.redAreas = self.move(self.temp, 10)
                 groupPoints = self.group_points()
-
-                new_c = self.cost_function(self.redAreas, groupPoints)
-                if i == 1:
+                Dr_room = self.dr_room()
+                new_c = self.cost_function(self.redAreas, groupPoints, Dr_room)
+                if i == 0:
                     old_c = c_0
                 if self.Metropolis(old_c, new_c):
                     old_c = new_c
-                    self.T = self.T * self.alpha
+                    self.T = self.T * alpha
                     count += 1
                 
 
@@ -1285,3 +1317,14 @@ class Group(baseParent):
             else:
                 return 0      
     
+if __name__ == "__main__":
+    p1=Furniture(Point(0,0), Point(10,12), 'Table',1)
+    p2=Furniture(Point(0,0), Point(4,6), 'Chair',2, additional_attr = {'snap_direct':['back']})
+    p3=Furniture(Point(0,0), Point(30,40), 'Bed',3)
+    p4=Furniture(Point(0,0), Point(10,12), 'Table',1)
+    p5=Furniture(Point(0,0), Point(8,12), 'Chair',2)
+    p6=Furniture(Point(0,0), Point(20,40), 'Bed',3)
+    furniture_list = [p1, p2, p3, p4, p5, p6]
+
+    Group1 = Group()
+    print("1")
